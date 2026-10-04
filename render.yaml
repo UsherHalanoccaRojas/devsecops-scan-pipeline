@@ -1,0 +1,20 @@
+# render.yaml - Configuración de despliegue en Render
+# Documentación: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: vulnerable-demo-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: app
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        sync: false   # Se configura manualmente en el dashboard de Render
