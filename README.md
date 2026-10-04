@@ -131,8 +131,8 @@ En `Settings → Secrets and variables → Actions` del repositorio, agregar:
 
 ## 👥 Equipo
 
-- [Nombre 1] — [Rol]
-- [Nombre 2] — [Rol]
+- Usher Damiron Halanocca Rojas — 2023076795
+- Stevie Gerald Marca Aguilar — 2023076802
 
 ## 📚 Referencias
 

@@ -123,25 +123,36 @@ app.get('/users/:id', authenticate, (req, res) => {
 // ------------------------------------------------
 // GET /search?q= - búsqueda de usuarios
 // ------------------------------------------------
+
+// ✅ CORRECCIÓN 8: Whitelist de transformaciones permitidas (reemplaza eval)
+// eval() con input externo permite ejecución de código arbitrario.
+// La solución es definir explícitamente qué transformaciones son válidas.
+const ALLOWED_TRANSFORMS = {
+  uppercase: (r) => ({ ...r, username: r.username.toUpperCase() }),
+  lowercase: (r) => ({ ...r, username: r.username.toLowerCase() }),
+  noEmail:   (r) => ({ id: r.id, username: r.username })
+};
+
 app.get('/search', authenticate, (req, res) => {
   const { q } = req.query;
   const db = getDb();
 
-  // ❌ VULNERABILIDAD 7: SQL Injection en parámetro de búsqueda
+  // ❌ VULNERABILIDAD 7: SQL Injection en parámetro de búsqueda (se mantiene para el demo)
   const query = `SELECT id, username, email FROM users WHERE username LIKE '%${q}%'`;
 
   db.all(query, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // ❌ VULNERABILIDAD 8: Uso de eval() con datos externos (Semgrep lo detectará)
     const transform = req.query.transform;
     if (transform) {
-      try {
-        const fn = eval(`(${transform})`); // NUNCA usar eval con inputs del usuario
-        return res.json(rows.map(fn));
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid transform' });
+      const fn = ALLOWED_TRANSFORMS[transform];
+      if (!fn) {
+        return res.status(400).json({
+          error: 'Invalid transform',
+          allowed: Object.keys(ALLOWED_TRANSFORMS)
+        });
       }
+      return res.json(rows.map(fn));
     }
 
     res.json(rows);
