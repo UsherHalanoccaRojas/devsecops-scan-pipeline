@@ -103,26 +103,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Trivy on filesystem (dependencias)
+      # Trivy usa --scanners vuln para analizar solo CVEs de dependencias.
+      # La detección de SECRETOS la hace Gitleaks (evita duplicados y falsos positivos).
+
+      - name: Run Trivy on filesystem — reporte completo (CRITICAL/HIGH/MEDIUM)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: './app'
+          scanners: 'vuln'           # Solo vulnerabilidades, no secretos
           severity: 'CRITICAL,HIGH,MEDIUM'
           format: 'table'
-          exit-code: '0'   # No falla el build, solo reporta
+          exit-code: '0'            # Solo reporta, no corta el build aquí
 
-      - name: Run Trivy on filesystem (output JSON)
+      - name: Run Trivy on filesystem — output JSON
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: './app'
+          scanners: 'vuln'
           severity: 'CRITICAL,HIGH'
           format: 'json'
           output: 'trivy-fs-results.json'
           exit-code: '0'
 
-      - name: Run Trivy on Dockerfile config
+      - name: Run Trivy config — Dockerfile e IaC
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
@@ -138,11 +143,12 @@ jobs:
           name: trivy-results
           path: trivy-fs-results.json
 
-      - name: Trivy strict check (falla solo en CRITICAL)
+      - name: Trivy strict check — falla solo en CVEs CRITICAL en dependencias
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: './app'
+          scanners: 'vuln'           # Solo CVEs, nunca secretos
           severity: 'CRITICAL'
           exit-code: '1'
           format: 'table'
