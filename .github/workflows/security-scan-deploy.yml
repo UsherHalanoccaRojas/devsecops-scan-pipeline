@@ -173,20 +173,41 @@ jobs:
         run: echo "✅ Todos los escaneos de seguridad pasaron. Iniciando despliegue..."
 
       - name: Deploy to Render via webhook
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          curl -X POST \
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "⚠️  RENDER_DEPLOY_HOOK_URL no configurado en GitHub Secrets."
+            echo "   → Ve a Settings → Secrets → Actions y agrega RENDER_DEPLOY_HOOK_URL"
+            echo "   → Obtén la URL en tu servicio de Render: Settings → Deploy Hook"
+            exit 0
+          fi
+          echo "🚀 Disparando deploy en Render..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
-            "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            "$DEPLOY_HOOK")
+          echo "Render respondió con status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ] && [ "$HTTP_STATUS" != "201" ]; then
+            echo "❌ Deploy hook retornó $HTTP_STATUS"
+            exit 1
+          fi
+          echo "✅ Deploy disparado correctamente."
 
       - name: Verify deployment
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
-          echo "⏳ Esperando que el servicio esté disponible..."
+          if [ -z "$APP_URL" ]; then
+            echo "⚠️  APP_URL no configurado — saltando verificación de salud."
+            exit 0
+          fi
+          echo "⏳ Esperando que el servicio esté disponible (30s)..."
           sleep 30
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.APP_URL }}/health")
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/health")
           if [ "$STATUS" = "200" ]; then
-            echo "✅ Despliegue exitoso! App disponible en ${{ secrets.APP_URL }}"
+            echo "✅ App disponible en $APP_URL"
           else
-            echo "⚠️  App devolvió status: $STATUS"
+            echo "⚠️  Health check devolvió status $STATUS (puede estar arrancando aún)"
           fi
 
       - name: Create deployment summary
